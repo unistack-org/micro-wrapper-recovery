@@ -1,10 +1,10 @@
-package recovery
+package recovery // import "go.unistack.org/micro-wrapper-recovery/v3"
 
 import (
 	"context"
 	"fmt"
 
-	"github.com/unistack-org/micro/v3/server"
+	"go.unistack.org/micro/v3/server"
 )
 
 type wrapper struct {
