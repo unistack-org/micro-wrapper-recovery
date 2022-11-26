@@ -16,7 +16,7 @@ type wrapper struct {
 	*/
 }
 
-func NewHandlerWrapper(fn func(context.Context, server.Request, interface{}, error) error) server.HandlerWrapper {
+func NewServerHandlerWrapper(fn func(context.Context, server.Request, interface{}, error) error) server.HandlerWrapper {
 	handler := &wrapper{
 		serverHandlerFunc: fn,
 	}
@@ -41,7 +41,7 @@ func (w *wrapper) HandlerFunc(fn server.HandlerFunc) server.HandlerFunc {
 	}
 }
 
-func NewSubscriberWrapper(fn func(context.Context, server.Message, error) error) server.SubscriberWrapper {
+func NewServerSubscriberWrapper(fn func(context.Context, server.Message, error) error) server.SubscriberWrapper {
 	handler := &wrapper{
 		serverSubscriberFunc: fn,
 	}
