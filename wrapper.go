@@ -4,22 +4,60 @@ import (
 	"context"
 	"fmt"
 
+	"go.unistack.org/micro/v3/errors"
 	"go.unistack.org/micro/v3/server"
 )
 
-type wrapper struct {
-	serverHandlerFunc    func(context.Context, server.Request, interface{}, error) error
-	serverSubscriberFunc func(context.Context, server.Message, error) error
-	/*
-		clientCallFunc       func(context.Context, string, client.Request, interface{}, client.CallOptions, error) error
-		clientClient         func(client.Client, error) error
-	*/
+var (
+	_ server.HandlerWrapper    = NewServerHandlerWrapper()
+	_ server.SubscriberWrapper = NewServerSubscriberWrapper()
+)
+
+func NewOptions(opts ...Option) Options {
+	options := Options{
+		ServerHandlerFn:    DefaultServerHandlerFn,
+		ServerSubscriberFn: DefaultServerSubscriberFn,
+	}
+	for _, o := range opts {
+		o(&options)
+	}
+	return options
 }
 
-func NewServerHandlerWrapper(fn func(context.Context, server.Request, interface{}, error) error) server.HandlerWrapper {
-	handler := &wrapper{
-		serverHandlerFunc: fn,
+type Options struct {
+	ServerHandlerFn    func(context.Context, server.Request, interface{}, error) error
+	ServerSubscriberFn func(context.Context, server.Message, error) error
+}
+
+type Option func(*Options)
+
+func ServerHandlerFn(fn func(context.Context, server.Request, interface{}, error) error) Option {
+	return func(o *Options) {
+		o.ServerHandlerFn = fn
 	}
+}
+
+func ServerSubscriberFn(fn func(context.Context, server.Message, error) error) Option {
+	return func(o *Options) {
+		o.ServerSubscriberFn = fn
+	}
+}
+
+var (
+	DefaultServerHandlerFn = func(ctx context.Context, req server.Request, rsp interface{}, err error) error {
+		return errors.BadRequest("", "%v", err)
+	}
+	DefaultServerSubscriberFn = func(ctx context.Context, req server.Message, err error) error {
+		return errors.BadRequest("", "%v", err)
+	}
+)
+
+type wrapper struct {
+	opts Options
+}
+
+func NewServerHandlerWrapper(opts ...Option) server.HandlerWrapper {
+	handler := &wrapper{opts: NewOptions(opts...)}
 	return handler.HandlerFunc
 }
 
@@ -31,9 +69,9 @@ func (w *wrapper) HandlerFunc(fn server.HandlerFunc) server.HandlerFunc {
 			case nil:
 				return
 			case error:
-				err = w.serverHandlerFunc(ctx, req, rsp, verr)
+				err = w.opts.ServerHandlerFn(ctx, req, rsp, verr)
 			default:
-				err = w.serverHandlerFunc(ctx, req, rsp, fmt.Errorf("%v", r))
+				err = w.opts.ServerHandlerFn(ctx, req, rsp, fmt.Errorf("%v", r))
 			}
 		}()
 		err = fn(ctx, req, rsp)
@@ -41,10 +79,8 @@ func (w *wrapper) HandlerFunc(fn server.HandlerFunc) server.HandlerFunc {
 	}
 }
 
-func NewServerSubscriberWrapper(fn func(context.Context, server.Message, error) error) server.SubscriberWrapper {
-	handler := &wrapper{
-		serverSubscriberFunc: fn,
-	}
+func NewServerSubscriberWrapper(opts ...Option) server.SubscriberWrapper {
+	handler := &wrapper{opts: NewOptions(opts...)}
 	return handler.SubscriberFunc
 }
 
@@ -56,9 +92,9 @@ func (w *wrapper) SubscriberFunc(fn server.SubscriberFunc) server.SubscriberFunc
 			case nil:
 				return
 			case error:
-				err = w.serverSubscriberFunc(ctx, msg, verr)
+				err = w.opts.ServerSubscriberFn(ctx, msg, verr)
 			default:
-				err = w.serverSubscriberFunc(ctx, msg, fmt.Errorf("%v", r))
+				err = w.opts.ServerSubscriberFn(ctx, msg, fmt.Errorf("%v", r))
 			}
 		}()
 		err = fn(ctx, msg)
