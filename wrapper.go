@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"go.unistack.org/micro/v3/errors"
-	"go.unistack.org/micro/v3/server"
+	"go.unistack.org/micro/v4/errors"
+	"go.unistack.org/micro/v4/server"
 )
 
 func NewOptions(opts ...Option) Options {
