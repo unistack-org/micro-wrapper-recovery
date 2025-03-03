@@ -10,8 +10,7 @@ import (
 
 func NewOptions(opts ...Option) Options {
 	options := Options{
-		ServerHandlerFn:    DefaultServerHandlerFn,
-		ServerSubscriberFn: DefaultServerSubscriberFn,
+		ServerHandlerFn: DefaultServerHandlerFn,
 	}
 	for _, o := range opts {
 		o(&options)
@@ -20,8 +19,7 @@ func NewOptions(opts ...Option) Options {
 }
 
 type Options struct {
-	ServerHandlerFn    func(context.Context, server.Request, interface{}, error) error
-	ServerSubscriberFn func(context.Context, server.Message, error) error
+	ServerHandlerFn func(context.Context, server.Request, interface{}, error) error
 }
 
 type Option func(*Options)
@@ -32,20 +30,9 @@ func ServerHandlerFunc(fn func(context.Context, server.Request, interface{}, err
 	}
 }
 
-func ServerSubscriberFunc(fn func(context.Context, server.Message, error) error) Option {
-	return func(o *Options) {
-		o.ServerSubscriberFn = fn
-	}
+var DefaultServerHandlerFn = func(ctx context.Context, req server.Request, rsp interface{}, err error) error {
+	return errors.BadRequest("", "%v", err)
 }
-
-var (
-	DefaultServerHandlerFn = func(ctx context.Context, req server.Request, rsp interface{}, err error) error {
-		return errors.BadRequest("", "%v", err)
-	}
-	DefaultServerSubscriberFn = func(ctx context.Context, req server.Message, err error) error {
-		return errors.BadRequest("", "%v", err)
-	}
-)
 
 var Hook = NewHook()
 
@@ -71,24 +58,6 @@ func (w *hook) ServerHandler(next server.FuncHandler) server.FuncHandler {
 			}
 		}()
 		err = next(ctx, req, rsp)
-		return err
-	}
-}
-
-func (w *hook) ServerSubscriber(next server.FuncSubHandler) server.FuncSubHandler {
-	return func(ctx context.Context, msg server.Message) (err error) {
-		defer func() {
-			r := recover()
-			switch verr := r.(type) {
-			case nil:
-				return
-			case error:
-				err = w.opts.ServerSubscriberFn(ctx, msg, verr)
-			default:
-				err = w.opts.ServerSubscriberFn(ctx, msg, fmt.Errorf("%v", r))
-			}
-		}()
-		err = next(ctx, msg)
 		return err
 	}
 }
